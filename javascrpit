@@ -1,0 +1,140 @@
+const canvas = document.getElementById('pong');
+const ctx = canvas.getContext('2d');
+
+// Game settings
+const PADDLE_WIDTH = 10;
+const PADDLE_HEIGHT = 100;
+const BALL_SIZE = 12;
+const PLAYER_X = 20;
+const AI_X = canvas.width - PADDLE_WIDTH - 20;
+const PADDLE_SPEED = 6;
+const AI_SPEED = 4;
+
+// Game state
+let playerY = (canvas.height - PADDLE_HEIGHT) / 2;
+let aiY = (canvas.height - PADDLE_HEIGHT) / 2;
+let ballX = canvas.width / 2 - BALL_SIZE / 2;
+let ballY = canvas.height / 2 - BALL_SIZE / 2;
+let ballSpeedX = 5 * (Math.random() > 0.5 ? 1 : -1);
+let ballSpeedY = 4 * (Math.random() > 0.5 ? 1 : -1);
+let playerScore = 0;
+let aiScore = 0;
+
+// Draw functions
+function drawRect(x, y, w, h, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, w, h);
+}
+
+function drawCircle(x, y, r, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2, false);
+    ctx.closePath();
+    ctx.fill();
+}
+
+function drawText(text, x, y, size = 36) {
+    ctx.fillStyle = '#fff';
+    ctx.font = `${size}px Arial`;
+    ctx.fillText(text, x, y);
+}
+
+// Game logic
+function resetBall() {
+    ballX = canvas.width / 2 - BALL_SIZE / 2;
+    ballY = canvas.height / 2 - BALL_SIZE / 2;
+    ballSpeedX = 5 * (Math.random() > 0.5 ? 1 : -1);
+    ballSpeedY = 4 * (Math.random() > 0.5 ? 1 : -1);
+}
+
+function collision(paddleX, paddleY) {
+    return (
+        ballX < paddleX + PADDLE_WIDTH &&
+        ballX + BALL_SIZE > paddleX &&
+        ballY < paddleY + PADDLE_HEIGHT &&
+        ballY + BALL_SIZE > paddleY
+    );
+}
+
+function update() {
+    // Move ball
+    ballX += ballSpeedX;
+    ballY += ballSpeedY;
+
+    // Wall collision
+    if (ballY <= 0 || ballY + BALL_SIZE >= canvas.height) {
+        ballSpeedY = -ballSpeedY;
+    }
+
+    // Paddle collision - Player
+    if (collision(PLAYER_X, playerY)) {
+        ballX = PLAYER_X + PADDLE_WIDTH;
+        ballSpeedX = -ballSpeedX;
+        // Add a bit of randomness
+        ballSpeedY += (Math.random() - 0.5) * 2;
+    }
+
+    // Paddle collision - AI
+    if (collision(AI_X, aiY)) {
+        ballX = AI_X - BALL_SIZE;
+        ballSpeedX = -ballSpeedX;
+        ballSpeedY += (Math.random() - 0.5) * 2;
+    }
+
+    // Score
+    if (ballX < 0) {
+        aiScore++;
+        resetBall();
+    } else if (ballX + BALL_SIZE > canvas.width) {
+        playerScore++;
+        resetBall();
+    }
+
+    // AI movement (basic)
+    let aiCenter = aiY + PADDLE_HEIGHT / 2;
+    if (aiCenter < ballY + BALL_SIZE / 2 - 10) {
+        aiY += AI_SPEED;
+    } else if (aiCenter > ballY + BALL_SIZE / 2 + 10) {
+        aiY -= AI_SPEED;
+    }
+    // Clamp AI paddle
+    aiY = Math.max(0, Math.min(canvas.height - PADDLE_HEIGHT, aiY));
+}
+
+function render() {
+    // Clear
+    drawRect(0, 0, canvas.width, canvas.height, '#111');
+
+    // Draw paddles and ball
+    drawRect(PLAYER_X, playerY, PADDLE_WIDTH, PADDLE_HEIGHT, '#fff');
+    drawRect(AI_X, aiY, PADDLE_WIDTH, PADDLE_HEIGHT, '#fff');
+    drawCircle(ballX + BALL_SIZE / 2, ballY + BALL_SIZE / 2, BALL_SIZE / 2, '#fff');
+
+    // Draw net
+    for (let i = 0; i < canvas.height; i += 30) {
+        drawRect(canvas.width / 2 - 2, i, 4, 20, '#444');
+    }
+
+    // Draw scores
+    drawText(playerScore, canvas.width / 4, 50);
+    drawText(aiScore, 3 * canvas.width / 4, 50);
+}
+
+function gameLoop() {
+    update();
+    render();
+    requestAnimationFrame(gameLoop);
+}
+
+// Mouse control for the player paddle
+canvas.addEventListener('mousemove', function(evt) {
+    const rect = canvas.getBoundingClientRect();
+    const mouseY = evt.clientY - rect.top;
+    playerY = mouseY - PADDLE_HEIGHT / 2;
+    // Clamp
+    playerY = Math.max(0, Math.min(canvas.height - PADDLE_HEIGHT, playerY));
+});
+
+// Start the game
+gameLoop();
